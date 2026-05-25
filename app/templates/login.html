@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+
+{% block title %}Connect to Wi-Fi{% endblock %}
+
+{% block content %}
+<div class="w-full max-w-md" x-data="{ loading: false }">
+  <div class="bg-white rounded-2xl shadow-2xl overflow-hidden">
+
+    <div class="bg-gradient-to-r from-blue-600 to-indigo-600 px-8 py-10 text-center">
+      <div class="inline-flex items-center justify-center w-16 h-16 bg-white/20 rounded-full mb-4">
+        <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0" />
+        </svg>
+      </div>
+      <h1 class="text-2xl font-bold text-white">Connect to Wi-Fi</h1>
+      {% if ssid %}
+      <p class="text-blue-100 mt-1 text-sm">{{ ssid }}</p>
+      {% endif %}
+    </div>
+
+    <div class="px-8 py-8">
+      <p class="text-slate-500 text-sm text-center mb-6">
+        Enter your email address to get free internet access.
+      </p>
+
+      <form
+        hx-post="/authenticate"
+        hx-target="#result"
+        hx-swap="innerHTML"
+        hx-indicator="#spinner"
+        @submit="loading = true"
+        @htmx:after-request="loading = false"
+      >
+        <input type="hidden" name="mac" value="{{ mac }}" />
+        <input type="hidden" name="ap" value="{{ ap }}" />
+        <input type="hidden" name="site_id" value="{{ site_id }}" />
+        <input type="hidden" name="ssid" value="{{ ssid }}" />
+        <input type="hidden" name="redirect_url" value="{{ redirect_url }}" />
+
+        <div class="mb-4">
+          <label for="email" class="block text-sm font-medium text-slate-700 mb-1">
+            Email address
+          </label>
+          <input
+            type="email"
+            id="email"
+            name="email"
+            required
+            placeholder="you@example.com"
+            class="w-full px-4 py-3 border border-slate-300 rounded-lg text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+          />
+        </div>
+
+        <button
+          type="submit"
+          :disabled="loading"
+          class="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-semibold py-3 px-6 rounded-lg transition flex items-center justify-center gap-2"
+        >
+          <span id="spinner" class="htmx-indicator">
+            <svg class="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+            </svg>
+          </span>
+          <span x-text="loading ? 'Connecting…' : 'Connect'">Connect</span>
+        </button>
+      </form>
+
+      <div id="result" class="mt-4"></div>
+
+      <p class="text-xs text-slate-400 text-center mt-6">
+        By connecting, you agree to our acceptable use policy.
+      </p>
+    </div>
+  </div>
+</div>
+
+<style>
+  .htmx-indicator { display: none; }
+  .htmx-request .htmx-indicator { display: inline-flex; }
+</style>
+{% endblock %}
