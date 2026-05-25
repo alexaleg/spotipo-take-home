@@ -131,16 +131,49 @@ class TestAdmin:
         response = client.get("/admin")
         assert response.status_code == 200
 
-    def test_lists_sessions(self, client, app):
+    def test_lists_emails(self, client, app):
+        from datetime import datetime
+
         with app.app_context():
-            session = GuestSession(
-                email="admin@example.com",
+            db.session.add(GuestSession(
+                email="guest@example.com",
                 mac_address=VALID_MAC,
                 status="authorized",
+                authorized_at=datetime(2024, 6, 1, 10, 0),
                 minutes_authorized=480,
-            )
-            db.session.add(session)
+            ))
             db.session.commit()
 
         response = client.get("/admin")
-        assert b"admin@example.com" in response.data
+        assert b"guest@example.com" in response.data
+
+    def test_email_table_deduplicates(self, client, app):
+        from datetime import datetime
+
+        with app.app_context():
+            for i in range(3):
+                db.session.add(GuestSession(
+                    email="repeat@example.com",
+                    mac_address=VALID_MAC,
+                    status="authorized",
+                    authorized_at=datetime(2024, 1, i + 1, 0, 0),
+                    minutes_authorized=480,
+                ))
+            db.session.commit()
+
+        response = client.get("/admin")
+        assert b"repeat@example.com" in response.data
+        assert b"3 total" in response.data
+
+    def test_failed_sessions_excluded_from_email_table(self, client, app):
+        with app.app_context():
+            db.session.add(GuestSession(
+                email="failed@example.com",
+                mac_address=VALID_MAC,
+                status="failed",
+                minutes_authorized=480,
+            ))
+            db.session.commit()
+
+        response = client.get("/admin")
+        assert b"0 unique" in response.data

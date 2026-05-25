@@ -9,6 +9,10 @@ class Config:
     )
     SQLALCHEMY_DATABASE_URI: str = DATABASE_URL
     SQLALCHEMY_TRACK_MODIFICATIONS: bool = False
+    SQLALCHEMY_ENGINE_OPTIONS: dict = {
+        "pool_pre_ping": True,
+        "pool_recycle": 3600,
+    }
 
     UNIFI_HOST: str = os.environ.get("UNIFI_HOST", "https://192.168.1.1:8443")
     UNIFI_USERNAME: str = os.environ.get("UNIFI_USERNAME", "admin")

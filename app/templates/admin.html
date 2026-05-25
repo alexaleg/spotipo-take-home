@@ -3,54 +3,124 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Admin — Guest Sessions</title>
+  <title>Admin — Captive Portal</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 </head>
 <body class="bg-slate-100 min-h-screen">
-  <div class="max-w-6xl mx-auto px-4 py-10">
-    <h1 class="text-2xl font-bold text-slate-800 mb-6">Guest Sessions</h1>
+  <div class="max-w-4xl mx-auto px-4 py-10 space-y-4">
+    <h1 class="text-2xl font-bold text-slate-800 mb-6">Admin Dashboard</h1>
 
-    {% if sessions %}
-    <div class="bg-white rounded-xl shadow overflow-x-auto">
-      <table class="w-full text-sm text-left">
-        <thead class="bg-slate-50 border-b border-slate-200">
-          <tr>
-            <th class="px-4 py-3 font-semibold text-slate-600">Email</th>
-            <th class="px-4 py-3 font-semibold text-slate-600">MAC Address</th>
-            <th class="px-4 py-3 font-semibold text-slate-600">SSID</th>
-            <th class="px-4 py-3 font-semibold text-slate-600">Status</th>
-            <th class="px-4 py-3 font-semibold text-slate-600">Authorized At</th>
-            <th class="px-4 py-3 font-semibold text-slate-600">Created At</th>
-          </tr>
-        </thead>
-        <tbody class="divide-y divide-slate-100">
-          {% for s in sessions %}
-          <tr class="hover:bg-slate-50 transition">
-            <td class="px-4 py-3 text-slate-800">{{ s.email }}</td>
-            <td class="px-4 py-3 font-mono text-slate-600">{{ s.mac_address }}</td>
-            <td class="px-4 py-3 text-slate-600">{{ s.ssid or '—' }}</td>
-            <td class="px-4 py-3">
-              {% if s.status == 'authorized' %}
-              <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">authorized</span>
-              {% elif s.status == 'failed' %}
-              <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800" title="{{ s.error_message or '' }}">failed</span>
-              {% else %}
-              <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">pending</span>
-              {% endif %}
-            </td>
-            <td class="px-4 py-3 text-slate-600">{{ s.authorized_at.strftime('%Y-%m-%d %H:%M') if s.authorized_at else '—' }}</td>
-            <td class="px-4 py-3 text-slate-600">{{ s.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+    <!-- Guest Emails -->
+    <div class="bg-white rounded-xl shadow" x-data="{ open: true }">
+      <button
+        @click="open = !open"
+        class="w-full flex items-center justify-between px-5 py-4 text-left"
+      >
+        <span class="font-semibold text-slate-700">
+          Guest Emails
+          <span class="ml-2 text-sm font-normal text-slate-400">{{ email_rows|length }} unique</span>
+        </span>
+        <svg
+          class="w-5 h-5 text-slate-400 transition-transform duration-200"
+          :class="open ? 'rotate-180' : ''"
+          fill="none" stroke="currentColor" viewBox="0 0 24 24"
+        >
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+
+      <div x-show="open" x-transition>
+        {% if email_rows %}
+        <div class="overflow-x-auto border-t border-slate-100">
+          <table class="w-full text-sm text-left">
+            <thead class="bg-slate-50">
+              <tr>
+                <th class="px-5 py-3 font-semibold text-slate-600">Email</th>
+                <th class="px-5 py-3 font-semibold text-slate-600">Last Online</th>
+                <th class="px-5 py-3 font-semibold text-slate-600 text-right">Visits</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+              {% for row in email_rows %}
+              <tr class="hover:bg-slate-50 transition">
+                <td class="px-5 py-3 text-slate-800">{{ row.email }}</td>
+                <td class="px-5 py-3 text-slate-600">
+                  {{ row.last_online.strftime('%Y-%m-%d %H:%M') if row.last_online else '—' }}
+                </td>
+                <td class="px-5 py-3 text-slate-500 text-right">{{ row.visit_count }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <p class="px-5 py-6 text-sm text-slate-400 border-t border-slate-100">No authorized guests yet.</p>
+        {% endif %}
+      </div>
     </div>
-    <p class="text-sm text-slate-500 mt-3">{{ sessions|length }} session{{ 's' if sessions|length != 1 }}</p>
-    {% else %}
-    <div class="bg-white rounded-xl shadow px-8 py-12 text-center text-slate-500">
-      No guest sessions yet.
+
+    <!-- All Sessions -->
+    <div class="bg-white rounded-xl shadow" x-data="{ open: false }">
+      <button
+        @click="open = !open"
+        class="w-full flex items-center justify-between px-5 py-4 text-left"
+      >
+        <span class="font-semibold text-slate-700">
+          All Sessions
+          <span class="ml-2 text-sm font-normal text-slate-400">{{ sessions|length }} total</span>
+        </span>
+        <svg
+          class="w-5 h-5 text-slate-400 transition-transform duration-200"
+          :class="open ? 'rotate-180' : ''"
+          fill="none" stroke="currentColor" viewBox="0 0 24 24"
+        >
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+
+      <div x-show="open" x-transition>
+        {% if sessions %}
+        <div class="overflow-x-auto border-t border-slate-100">
+          <table class="w-full text-sm text-left">
+            <thead class="bg-slate-50">
+              <tr>
+                <th class="px-4 py-3 font-semibold text-slate-600">Email</th>
+                <th class="px-4 py-3 font-semibold text-slate-600">MAC Address</th>
+                <th class="px-4 py-3 font-semibold text-slate-600">SSID</th>
+                <th class="px-4 py-3 font-semibold text-slate-600">Status</th>
+                <th class="px-4 py-3 font-semibold text-slate-600">Authorized At</th>
+                <th class="px-4 py-3 font-semibold text-slate-600">Created At</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+              {% for s in sessions %}
+              <tr class="hover:bg-slate-50 transition">
+                <td class="px-4 py-3 text-slate-800">{{ s.email }}</td>
+                <td class="px-4 py-3 font-mono text-slate-600">{{ s.mac_address }}</td>
+                <td class="px-4 py-3 text-slate-600">{{ s.ssid or '—' }}</td>
+                <td class="px-4 py-3">
+                  {% if s.status == 'authorized' %}
+                  <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">authorized</span>
+                  {% elif s.status == 'failed' %}
+                  <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800" title="{{ s.error_message or '' }}">failed</span>
+                  {% else %}
+                  <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">pending</span>
+                  {% endif %}
+                </td>
+                <td class="px-4 py-3 text-slate-600">{{ s.authorized_at.strftime('%Y-%m-%d %H:%M') if s.authorized_at else '—' }}</td>
+                <td class="px-4 py-3 text-slate-600">{{ s.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <p class="px-5 py-6 text-sm text-slate-400 border-t border-slate-100">No sessions yet.</p>
+        {% endif %}
+      </div>
     </div>
-    {% endif %}
+
   </div>
 </body>
 </html>

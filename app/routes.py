@@ -2,6 +2,7 @@ import re
 from datetime import UTC, datetime
 
 from flask import Blueprint, current_app, make_response, render_template, request
+from sqlalchemy import func
 
 from app import db
 from app.models import GuestSession
@@ -97,5 +98,16 @@ def success() -> str:
 
 @main_bp.get("/admin")
 def admin() -> str:
+    email_rows = (
+        db.session.query(
+            GuestSession.email,
+            func.max(GuestSession.authorized_at).label("last_online"),
+            func.count(GuestSession.id).label("visit_count"),
+        )
+        .filter(GuestSession.status == "authorized")
+        .group_by(GuestSession.email)
+        .order_by(func.max(GuestSession.authorized_at).desc())
+        .all()
+    )
     sessions = GuestSession.query.order_by(GuestSession.created_at.desc()).all()
-    return render_template("admin.html", sessions=sessions)
+    return render_template("admin.html", email_rows=email_rows, sessions=sessions)
