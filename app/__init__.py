@@ -16,11 +16,11 @@ def create_app(config_object: object | None = None) -> Flask:
 
     db.init_app(app)
 
-    with app.app_context():
-        db.create_all()
-
     from app.routes import main_bp
 
     app.register_blueprint(main_bp)
+
+    with app.app_context():
+        db.create_all()
 
     return app
