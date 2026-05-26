@@ -16,13 +16,15 @@ _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
 @main_bp.get("/")
 def index() -> str:
+    # In the UniFi External Hotspot API the client MAC is in the `id` param,
+    # not a separate `mac` param. `t` is a Unix timestamp from the redirect.
     return render_template(
         "login.html",
-        mac=request.args.get("mac", ""),
+        mac=request.args.get("id", ""),
         ap=request.args.get("ap", ""),
-        site_id=request.args.get("id", ""),
         ssid=request.args.get("ssid", ""),
         redirect_url=request.args.get("url", ""),
+        t=request.args.get("t", ""),
     )
 
 
@@ -31,7 +33,6 @@ def authenticate():  # type: ignore[return]
     email = (request.form.get("email") or "").strip()
     mac = (request.form.get("mac") or "").strip()
     ap = (request.form.get("ap") or "").strip()
-    site_id = (request.form.get("site_id") or "").strip()
     ssid = (request.form.get("ssid") or "").strip()
 
     if not _EMAIL_RE.match(email):
@@ -48,7 +49,7 @@ def authenticate():  # type: ignore[return]
         email=email,
         mac_address=mac.lower(),
         ap_mac=ap.lower() if ap else None,
-        site_id=site_id or None,
+        site_id=current_app.config.get("UNIFI_SITE_ID"),
         ssid=ssid or None,
         client_ip=request.remote_addr,
         status="pending",
@@ -60,19 +61,15 @@ def authenticate():  # type: ignore[return]
     if not current_app.config.get("UNIFI_MOCK"):
         client = UniFiClient(
             host=current_app.config["UNIFI_HOST"],
-            username=current_app.config["UNIFI_USERNAME"],
-            password=current_app.config["UNIFI_PASSWORD"],
-            site=current_app.config["UNIFI_SITE"],
+            api_key=current_app.config["UNIFI_API_KEY"],
+            site_id=current_app.config["UNIFI_SITE_ID"],
             verify_ssl=current_app.config["UNIFI_VERIFY_SSL"],
         )
         try:
-            client.login()
             client.authorize_guest(
                 mac=mac,
                 minutes=current_app.config["PORTAL_AUTHORIZED_MINUTES"],
-                ap_mac=ap or None,
             )
-            client.logout()
         except UniFiError as exc:
             session.status = "failed"
             session.error_message = str(exc)

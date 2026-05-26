@@ -1,6 +1,7 @@
 """
 Route integration tests.
-UniFi API reference: https://developer.ui.com/network/v10.3.58/gettingstarted
+External Hotspot API: https://help.ui.com/hc/en-us/articles/31228198640023
+Execute client action: https://developer.ui.com/network/v1/executeconnectedclientaction
 """
 
 from unittest.mock import patch
@@ -18,7 +19,6 @@ def _auth_form(email: str = VALID_EMAIL, mac: str = VALID_MAC, **kwargs):
         "email": email,
         "mac": mac,
         "ap": "",
-        "site_id": "default",
         "ssid": "TestNet",
         **kwargs,
     }
@@ -33,17 +33,16 @@ class TestIndex:
         response = client.get("/")
         assert b'name="email"' in response.data
 
-    def test_passes_mac_to_hidden_input(self, client):
-        response = client.get(f"/?mac={VALID_MAC}&ap=11:22:33:44:55:66&id=default")
+    def test_passes_client_mac_from_id_param_to_hidden_input(self, client):
+        # UniFi sends the client MAC in the `id` query param, not `mac`
+        response = client.get(f"/?id={VALID_MAC}&ap=11:22:33:44:55:66")
         assert VALID_MAC.encode() in response.data
 
 
 class TestAuthenticate:
     def test_success_returns_hx_redirect(self, client, app):
         with patch("app.routes.UniFiClient") as mock_cls:
-            mock_cls.return_value.login.return_value = None
             mock_cls.return_value.authorize_guest.return_value = None
-            mock_cls.return_value.logout.return_value = None
 
             response = client.post("/authenticate", data=_auth_form())
 
@@ -52,9 +51,7 @@ class TestAuthenticate:
 
     def test_success_creates_authorized_session(self, client, app):
         with patch("app.routes.UniFiClient") as mock_cls:
-            mock_cls.return_value.login.return_value = None
             mock_cls.return_value.authorize_guest.return_value = None
-            mock_cls.return_value.logout.return_value = None
 
             client.post("/authenticate", data=_auth_form())
 
@@ -66,16 +63,18 @@ class TestAuthenticate:
 
     def test_unifi_error_returns_502(self, client, app):
         with patch("app.routes.UniFiClient") as mock_cls:
-            mock_cls.return_value.login.side_effect = UniFiError("controller down")
-
+            mock_cls.return_value.authorize_guest.side_effect = UniFiError(
+                "controller down"
+            )
             response = client.post("/authenticate", data=_auth_form())
 
         assert response.status_code == 502
 
     def test_unifi_error_stores_failed_session(self, client, app):
         with patch("app.routes.UniFiClient") as mock_cls:
-            mock_cls.return_value.login.side_effect = UniFiError("controller down")
-
+            mock_cls.return_value.authorize_guest.side_effect = UniFiError(
+                "controller down"
+            )
             client.post("/authenticate", data=_auth_form())
 
         with app.app_context():
@@ -100,7 +99,6 @@ class TestAuthenticate:
     def test_missing_mac_returns_422(self, client, app):
         response = client.post("/authenticate", data=_auth_form(mac=""))
         assert response.status_code == 422
-
 
     def test_mock_mode_skips_unifi_and_authorizes(self, app):
         app.config["UNIFI_MOCK"] = True
@@ -135,13 +133,15 @@ class TestAdmin:
         from datetime import datetime
 
         with app.app_context():
-            db.session.add(GuestSession(
-                email="guest@example.com",
-                mac_address=VALID_MAC,
-                status="authorized",
-                authorized_at=datetime(2024, 6, 1, 10, 0),
-                minutes_authorized=480,
-            ))
+            db.session.add(
+                GuestSession(
+                    email="guest@example.com",
+                    mac_address=VALID_MAC,
+                    status="authorized",
+                    authorized_at=datetime(2024, 6, 1, 10, 0),
+                    minutes_authorized=480,
+                )
+            )
             db.session.commit()
 
         response = client.get("/admin")
@@ -152,13 +152,15 @@ class TestAdmin:
 
         with app.app_context():
             for i in range(3):
-                db.session.add(GuestSession(
-                    email="repeat@example.com",
-                    mac_address=VALID_MAC,
-                    status="authorized",
-                    authorized_at=datetime(2024, 1, i + 1, 0, 0),
-                    minutes_authorized=480,
-                ))
+                db.session.add(
+                    GuestSession(
+                        email="repeat@example.com",
+                        mac_address=VALID_MAC,
+                        status="authorized",
+                        authorized_at=datetime(2024, 1, i + 1, 0, 0),
+                        minutes_authorized=480,
+                    )
+                )
             db.session.commit()
 
         response = client.get("/admin")
@@ -167,12 +169,14 @@ class TestAdmin:
 
     def test_failed_sessions_excluded_from_email_table(self, client, app):
         with app.app_context():
-            db.session.add(GuestSession(
-                email="failed@example.com",
-                mac_address=VALID_MAC,
-                status="failed",
-                minutes_authorized=480,
-            ))
+            db.session.add(
+                GuestSession(
+                    email="failed@example.com",
+                    mac_address=VALID_MAC,
+                    status="failed",
+                    minutes_authorized=480,
+                )
+            )
             db.session.commit()
 
         response = client.get("/admin")

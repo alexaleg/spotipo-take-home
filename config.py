@@ -14,10 +14,9 @@ class Config:
         "pool_recycle": 3600,
     }
 
-    UNIFI_HOST: str = os.environ.get("UNIFI_HOST", "https://192.168.1.1:8443")
-    UNIFI_USERNAME: str = os.environ.get("UNIFI_USERNAME", "admin")
-    UNIFI_PASSWORD: str = os.environ.get("UNIFI_PASSWORD", "password")
-    UNIFI_SITE: str = os.environ.get("UNIFI_SITE", "default")
+    UNIFI_HOST: str = os.environ.get("UNIFI_HOST", "https://192.168.1.1")
+    UNIFI_API_KEY: str = os.environ.get("UNIFI_API_KEY", "")
+    UNIFI_SITE_ID: str = os.environ.get("UNIFI_SITE_ID", "default")
     UNIFI_VERIFY_SSL: bool = (
         os.environ.get("UNIFI_VERIFY_SSL", "false").lower() == "true"
     )
